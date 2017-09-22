@@ -7,6 +7,9 @@ authors = ["Martin Hafskjold Thoresen <martinhath@gmail.com>"]
 hyper = "0.11"
 futures = "0.1"
 tokio-core = "0.1"
+get_if_addrs = "0.4"
+json = "0.11"
+hostname = "0.1"
 
 [[bin]]
 name = "dyne"
