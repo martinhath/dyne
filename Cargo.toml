@@ -10,6 +10,7 @@ tokio-core = "0.1"
 get_if_addrs = "0.4"
 json = "0.11"
 hostname = "0.1"
+lazy_static = "*"
 
 [[bin]]
 name = "dyne"
