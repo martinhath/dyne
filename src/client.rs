@@ -1,4 +1,5 @@
 extern crate hyper;
+extern crate hyper_tls;
 extern crate futures;
 extern crate tokio_core;
 extern crate get_if_addrs;
@@ -38,7 +39,9 @@ fn ip_to_json(ip: Ipv4Addr) -> serde_json::Value {
 
 fn main() {
     let mut core = Core::new().unwrap();
-    let client = Client::new(&core.handle());
+    let client = Client::configure()
+        .connector(hyper_tls::HttpsConnector::new(4, &core.handle()).unwrap())
+        .build(&core.handle());
 
     let target = match std::env::args().nth(1) {
         Some(t) => t,
