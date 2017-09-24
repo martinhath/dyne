@@ -11,6 +11,8 @@ extern crate lazy_static;
 use futures::Stream;
 use futures::future::Future;
 use hyper::server::{Http, Request, Response, Service};
+use hyper::header::{Headers, ContentType};
+use hyper::mime;
 use serde_json::{value, Value};
 
 use std::sync::Mutex;
@@ -35,7 +37,8 @@ fn handle_ping(request: Request) -> <Ping as Service>::Future {
             let j: serde_json::Value = serde_json::from_str(json).expect("malformed json received");
             let obj = j.as_object().expect("json wasn't an object!");
             let hostname = match obj.get("hostname") {
-                Some(hostname) => hostname,
+                // TODO(mht): wtf is happnening here?
+                Some(hostname) => hostname.as_str().unwrap().to_string(),
                 None => {
                     return futures::future::ok(
                         Response::new().with_status(hyper::StatusCode::BadRequest),
@@ -43,13 +46,13 @@ fn handle_ping(request: Request) -> <Ping as Service>::Future {
                 }
             };
             let machine = Machine {
-                hostname: hostname.to_string(),
+                hostname: hostname.clone(),
                 global_ip: remote_addr,
                 local_ip: j["ip"].as_str().map(str::to_string),
             };
             {
                 let mut map = MAP.lock().unwrap();
-                map.insert(hostname.to_string(), machine);
+                map.insert(hostname, machine);
             }
         }
         futures::future::ok(Response::new())
@@ -62,8 +65,10 @@ fn serve_index(request: Request) -> <Ping as Service>::Future {
         serde_json::to_string(map).unwrap()
     };
     Box::new(futures::future::ok(
-            Response::new()
-            .with_body(data)))
+        Response::new()
+            .with_header(ContentType(mime::APPLICATION_JSON))
+            .with_body(data),
+    ))
 }
 
 struct Ping;
@@ -78,7 +83,9 @@ impl Service for Ping {
         match req.method() {
             &hyper::Method::Post => handle_ping(req),
             &hyper::Method::Get => serve_index(req),
-            _ => Box::new(futures::future::ok(Response::new().with_status(hyper::StatusCode::MethodNotAllowed)))
+            _ => Box::new(futures::future::ok(Response::new().with_status(
+                hyper::StatusCode::MethodNotAllowed,
+            ))),
         }
     }
 }
