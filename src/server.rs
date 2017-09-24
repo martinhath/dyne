@@ -1,19 +1,21 @@
 extern crate hyper;
 extern crate futures;
-#[macro_use]
 extern crate serde;
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate askama;
 
 use futures::Stream;
 use futures::future::Future;
 use hyper::server::{Http, Request, Response, Service};
-use hyper::header::{Headers, ContentType};
+use hyper::header::ContentType;
 use hyper::mime;
-use serde_json::{value, Value};
+
+use askama::Template;
 
 use std::sync::Mutex;
 use std::collections::HashMap;
@@ -23,6 +25,12 @@ struct Machine {
     hostname: String,
     global_ip: Option<String>,
     local_ip: Option<String>,
+}
+
+#[derive(Template)]
+#[template(path = "index.html")]
+struct IndexTemplate<'a> {
+    machines: Vec<&'a Machine>
 }
 
 lazy_static! {
@@ -59,14 +67,18 @@ fn handle_ping(request: Request) -> <Ping as Service>::Future {
     }))
 }
 
-fn serve_index(request: Request) -> <Ping as Service>::Future {
+fn serve_index(_request: Request) -> <Ping as Service>::Future {
     let data = {
         let map: &HashMap<String, Machine> = &*MAP.lock().unwrap();
-        serde_json::to_string(map).unwrap()
+        let machines = map.values().collect::<Vec<_>>();
+        let template = IndexTemplate {
+            machines,
+        };
+        template.render().expect("template render failed")
     };
     Box::new(futures::future::ok(
         Response::new()
-            .with_header(ContentType(mime::APPLICATION_JSON))
+            .with_header(ContentType(mime::TEXT_HTML))
             .with_body(data),
     ))
 }
