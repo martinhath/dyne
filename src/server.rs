@@ -1,17 +1,22 @@
 extern crate hyper;
 extern crate futures;
-extern crate json;
+#[macro_use]
+extern crate serde;
+extern crate serde_json;
+#[macro_use]
+extern crate serde_derive;
 #[macro_use]
 extern crate lazy_static;
 
 use futures::Stream;
 use futures::future::Future;
 use hyper::server::{Http, Request, Response, Service};
+use serde_json::{value, Value};
 
 use std::sync::Mutex;
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 struct Machine {
     hostname: String,
     global_ip: Option<String>,
@@ -27,8 +32,9 @@ fn handle_ping(request: Request) -> <Ping as Service>::Future {
     let body = request.body();
     Box::new(body.concat2().and_then(move |chunk| {
         if let Ok(json) = std::str::from_utf8(&*chunk) {
-            let j = json::parse(json).expect("malformed json received");
-            let hostname = match j["hostname"].as_str() {
+            let j: serde_json::Value = serde_json::from_str(json).expect("malformed json received");
+            let obj = j.as_object().expect("json wasn't an object!");
+            let hostname = match obj.get("hostname") {
                 Some(hostname) => hostname,
                 None => {
                     return futures::future::ok(
@@ -51,8 +57,13 @@ fn handle_ping(request: Request) -> <Ping as Service>::Future {
 }
 
 fn serve_index(request: Request) -> <Ping as Service>::Future {
-    // TODO(mht): serve index.html, with `MAP` data.
-    Box::new(futures::future::ok(Response::new()))
+    let data = {
+        let map: &HashMap<String, Machine> = &*MAP.lock().unwrap();
+        serde_json::to_string(map).unwrap()
+    };
+    Box::new(futures::future::ok(
+            Response::new()
+            .with_body(data)))
 }
 
 struct Ping;

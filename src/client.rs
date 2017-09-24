@@ -3,7 +3,7 @@ extern crate futures;
 extern crate tokio_core;
 extern crate get_if_addrs;
 #[macro_use]
-extern crate json;
+extern crate serde_json;
 extern crate hostname;
 
 use futures::Future;
@@ -32,8 +32,8 @@ fn get_local_ip() -> Option<Ipv4Addr> {
         })
 }
 
-fn ip_to_json(ip: Ipv4Addr) -> json::JsonValue {
-    json::JsonValue::String(format!("{}", ip))
+fn ip_to_json(ip: Ipv4Addr) -> serde_json::Value {
+    serde_json::Value::String(format!("{}", ip))
 }
 
 fn main() {
@@ -44,12 +44,12 @@ fn main() {
         let uri = "http://127.0.0.1:8000".parse().unwrap();
         let request: Request = {
             let payload = {
-                let mut json_obj = object!();
+                let mut json_obj = json!({});
                 if let Some(ip) = get_local_ip() {
                     json_obj["ip"] = ip_to_json(ip);
                 }
                 json_obj["hostname"] = hostname::get_hostname().unwrap().into();
-                json::stringify(json_obj)
+                json_obj.to_string()
             };
             let mut req = Request::new(Method::Post, uri);
             req.headers_mut().set(ContentType::json());
