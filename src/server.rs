@@ -30,7 +30,7 @@ struct Machine {
 #[derive(Template)]
 #[template(path = "index.html")]
 struct IndexTemplate<'a> {
-    machines: Vec<&'a Machine>
+    machines: Vec<&'a Machine>,
 }
 
 lazy_static! {
@@ -44,6 +44,7 @@ fn handle_ping(request: Request) -> <Ping as Service>::Future {
         if let Ok(json) = std::str::from_utf8(&*chunk) {
             let j: serde_json::Value = serde_json::from_str(json).expect("malformed json received");
             let obj = j.as_object().expect("json wasn't an object!");
+
             let hostname = match obj.get("hostname") {
                 // TODO(mht): wtf is happnening here?
                 Some(hostname) => hostname.as_str().unwrap().to_string(),
@@ -71,9 +72,7 @@ fn serve_index(_request: Request) -> <Ping as Service>::Future {
     let data = {
         let map: &HashMap<String, Machine> = &*MAP.lock().unwrap();
         let machines = map.values().collect::<Vec<_>>();
-        let template = IndexTemplate {
-            machines,
-        };
+        let template = IndexTemplate { machines };
         template.render().expect("template render failed")
     };
     Box::new(futures::future::ok(

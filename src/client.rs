@@ -40,8 +40,18 @@ fn main() {
     let mut core = Core::new().unwrap();
     let client = Client::new(&core.handle());
 
+    let target = match std::env::args().nth(1) {
+        Some(t) => t,
+        None => {
+            println!("Usage: ./dyne <target ip:port>");
+            return;
+        }
+    };
+    let uri_str = format!("http://{}", target);
+    let uri: hyper::Uri = uri_str.parse().expect(
+        &format!("Failed to parse uri: {}", uri_str),
+    );
     loop {
-        let uri = "http://127.0.0.1:8000".parse().unwrap();
         let request: Request = {
             let payload = {
                 let mut json_obj = json!({});
@@ -51,7 +61,7 @@ fn main() {
                 json_obj["hostname"] = hostname::get_hostname().unwrap().into();
                 json_obj.to_string()
             };
-            let mut req = Request::new(Method::Post, uri);
+            let mut req = Request::new(Method::Post, uri.clone());
             req.headers_mut().set(ContentType::json());
             req.headers_mut().set(ContentLength(payload.len() as u64));
             req.set_body(payload);
@@ -64,6 +74,6 @@ fn main() {
             }
         });
         core.run(work).unwrap();
-        thread::sleep(Duration::from_secs(10));
+        thread::sleep(Duration::from_secs(30));
     }
 }
