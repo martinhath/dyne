@@ -47,7 +47,7 @@ fn main() {
             return;
         }
     };
-    let uri_str = format!("http://{}", target);
+    let uri_str = format!("https://{}", target);
     let uri: hyper::Uri = uri_str.parse().expect(
         &format!("Failed to parse uri: {}", uri_str),
     );
