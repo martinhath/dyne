@@ -38,7 +38,12 @@ lazy_static! {
 }
 
 fn handle_ping(request: Request) -> <Ping as Service>::Future {
-    let remote_addr = request.remote_addr().map(|h| h.to_string());
+    let remote_addr = request
+        .headers()
+        .get_raw("X-Forwarded-For")
+        .and_then(|h| h.one())
+        .map(|b| String::from_utf8_lossy(b).to_string())
+        .or(request.remote_addr().map(|h| h.to_string()));
     let body = request.body();
     Box::new(body.concat2().and_then(move |chunk| {
         if let Ok(json) = std::str::from_utf8(&*chunk) {
